@@ -4,6 +4,19 @@ document.addEventListener("DOMContentLoaded", () => {
   const signupForm = document.getElementById("signup-form");
   const messageDiv = document.getElementById("message");
 
+  // small helper to escape text for insertion into HTML
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+    );
+  }
+
+  // get a single-character initial from an email/name for the badge
+  function getInitial(s) {
+    if (!s) return "";
+    return escapeHtml(String(s).split("@")[0].trim().charAt(0).toUpperCase());
+  }
+
   // Function to fetch activities from API
   async function fetchActivities() {
     try {
@@ -13,6 +26,9 @@ document.addEventListener("DOMContentLoaded", () => {
       // Clear loading message
       activitiesList.innerHTML = "";
 
+      // Reset select options before populating (avoid duplicates on re-fetch)
+      activitySelect.innerHTML = '<option value="">-- Select an activity --</option>';
+
       // Populate activities list
       Object.entries(activities).forEach(([name, details]) => {
         const activityCard = document.createElement("div");
@@ -20,11 +36,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Build participants HTML
+        const participants = Array.isArray(details.participants) ? details.participants : [];
+        let participantsHtml = `<div class="participants-section"><strong>Participants:</strong>`;
+        if (participants.length === 0) {
+          participantsHtml += `<ul class="participants-list"><li class="no-participants">No participants yet</li></ul>`;
+        } else {
+          participantsHtml += `<ul class="participants-list">` + participants.map(p =>
+            `<li class="participant-item"><span class="participant-badge">${getInitial(p)}</span><span class="participant-name">${escapeHtml(p)}</span></li>`
+          ).join("") + `</ul>`;
+        }
+        participantsHtml += `</div>`;
+
         activityCard.innerHTML = `
-          <h4>${name}</h4>
-          <p>${details.description}</p>
-          <p><strong>Schedule:</strong> ${details.schedule}</p>
+          <h4>${escapeHtml(name)}</h4>
+          <p>${escapeHtml(details.description)}</p>
+          <p><strong>Schedule:</strong> ${escapeHtml(details.schedule)}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHtml}
         `;
 
         activitiesList.appendChild(activityCard);
